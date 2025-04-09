@@ -1,25 +1,68 @@
-# docker/docker-compose.yml
-version: '3.8'
 services:
   frontend:
-    build: ../frontend
+    build: ./frontend
     ports:
       - "3000:3000"
     env_file:
-      - ../frontend/.env.local
+      - ./.env
     volumes:
-      - ../frontend:/app
+      - ./frontend:/app
     depends_on:
-      - supabase
+      - backend
 
-  backend-go:
-    build: ../backend-go
+  backend:
+    build: ./backend-go
     ports:
       - "8080:8080"
+    env_file:
+      - ./.env
     volumes:
-      - ../backend-go:/app
+      - ./backend-go:/app
+    working_dir: /app/cmd
+    command: go run main.go
+    depends_on:
+      - supabase-db
 
-  supabase:
-    image: supabase/postgres
+  # Supabase公式構成（https://github.com/supabase/supabase/tree/master/docker）準拠
+  supabase-db:
+    image: supabase/postgres:15.1.0.72
     ports:
       - "54322:5432"
+    volumes:
+      - ./supabase/volumes/db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: postgres
+
+  supabase-auth:
+    image: supabase/gotrue:v2.150.0
+    ports:
+      - "9999:9999"
+    env_file:
+      - ./.env
+    environment:
+      GOTRUE_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@supabase-db:5432/postgres
+      GOTRUE_API_HOST: 0.0.0.0
+
+  # supabase-storage:
+  #   image: supabase/storage-api
+  #   ports:
+  #     - "5000:5000"
+  #   env_file:
+  #   - ./.env
+  #   environment:
+  #     ANON_KEY: ${SUPABASE_ANON_KEY}
+  #     SERVICE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+  #     POSTGRES_URL: postgres://postgres:postgres@supabase-db:5432/postgres
+
+  studio:
+    image: supabase/studio:latest
+    ports:
+      - "54323:3000"
+    env_file:
+      - ./.env
+    environment:
+      SUPABASE_URL: http://localhost:54321
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
