@@ -1,0 +1,25 @@
+# docker/docker-compose.yml
+version: '3.8'
+services:
+  frontend:
+    build: ../frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ../frontend/.env.local
+    volumes:
+      - ../frontend:/app
+    depends_on:
+      - supabase
+
+  backend-go:
+    build: ../backend-go
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../backend-go:/app
+
+  supabase:
+    image: supabase/postgres
+    ports:
+      - "54322:5432"
